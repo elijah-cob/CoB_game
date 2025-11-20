@@ -1,0 +1,11 @@
+<svg width="100" height="60" viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
+  <!-- Hull -->
+  <path d="M5,35 L15,55 L95,55 L95,35 Z" fill="#f0f0f0" stroke="#999" stroke-width="2"/>
+  <!-- Stripe -->
+  <rect x="5" y="40" width="90" height="5" fill="#333" />
+  <!-- Cabin / Windshield -->
+  <path d="M40,35 L50,20 L80,20 L80,35 Z" fill="#333" />
+  <path d="M50,22 L78,22 L78,33 L42,33 Z" fill="#87CEEB" />
+  <!-- Motor -->
+  <rect x="95" y="38" width="5" height="15" fill="#000" />
+</svg>

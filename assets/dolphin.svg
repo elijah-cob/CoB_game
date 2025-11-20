@@ -1,0 +1,155 @@
+<svg width="80" height="40" viewBox="0 0 80 40" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Enhanced gradients for realistic shading -->
+    <linearGradient id="bodyGradTop" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#5a7c99;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#6b8db0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8fabc7;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="bodyGradBottom" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#a3bdd4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d4e4f0;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="finGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6b8db0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8fabc7;stop-opacity:1" />
+    </linearGradient>
+    
+    <filter id="softShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1"/>
+      <feOffset dx="0" dy="1" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.4"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Animated group for swimming motion -->
+  <g id="dolphin-body">
+    <!-- Tail section with animation -->
+    <g id="tail-group">
+      <!-- Tail flukes - animated -->
+      <path id="tail-flukes" d="M 2,18 Q 6,10 12,16 Q 14,18 12,20 Q 6,26 2,18 Z" 
+            fill="#4a6b85" stroke="#3d5a70" stroke-width="0.8">
+        <animateTransform
+          attributeName="transform"
+          attributeType="XML"
+          type="rotate"
+          from="-8 10 18"
+          to="8 10 18"
+          dur="0.8s"
+          repeatCount="indefinite"
+          additive="sum"/>
+      </path>
+      
+      <!-- Tail connector -->
+      <path d="M 12,18 Q 15,15 18,18 Q 15,21 12,18 Z" 
+            fill="#5a7c99" stroke="#4a6b85" stroke-width="0.5"/>
+    </g>
+    
+    <!-- Main body - top layer (darker) -->
+    <path d="M 18,18 
+             C 28,10 42,8 62,13
+             C 68,14.5 74,17 77.5,20
+             L 77,22
+             C 72,19 65,18 58,18
+             C 45,18 32,16.5 18,18 Z" 
+          fill="url(#bodyGradTop)" 
+          stroke="#4a6b85" 
+          stroke-width="0.8"
+          filter="url(#softShadow)"/>
+    
+    <!-- Main body - bottom layer (lighter) -->
+    <path d="M 18,18 
+             C 32,20 45,22 58,22
+             C 65,22 72,21 77,22
+             L 77.5,24
+             C 74,27 68,29.5 62,31
+             C 42,36 28,34 18,22
+             C 18,20 18,18 18,18 Z" 
+          fill="url(#bodyGradBottom)" 
+          stroke="#8fabc7" 
+          stroke-width="0.6"/>
+    
+    <!-- Dorsal fin with animation -->
+    <g id="dorsal-fin">
+      <path d="M 42,12 Q 44,3 47,11 Q 45,13 42,12 Z" 
+            fill="url(#finGrad)" 
+            stroke="#4a6b85" 
+            stroke-width="0.7"
+            stroke-linejoin="round">
+        <animateTransform
+          attributeName="transform"
+          attributeType="XML"
+          type="rotate"
+          from="-3 44 12"
+          to="3 44 12"
+          dur="1.2s"
+          repeatCount="indefinite"
+          additive="sum"/>
+      </path>
+    </g>
+    
+    <!-- Pectoral fin (front) with subtle animation -->
+    <g id="pectoral-fin">
+      <path d="M 50,23 Q 47,30 53,27 Q 52,24 50,23 Z" 
+            fill="#7a9dba" 
+            stroke="#5a7c99" 
+            stroke-width="0.7"
+            stroke-linecap="round">
+        <animateTransform
+          attributeName="transform"
+          attributeType="XML"
+          type="rotate"
+          from="5 50 25"
+          to="-5 50 25"
+          dur="1s"
+          repeatCount="indefinite"
+          additive="sum"/>
+      </path>
+    </g>
+    
+    <!-- Rostrum (snout) detail -->
+    <path d="M 77,20 Q 78,20 78.5,21 Q 78,22 77,22 Z" 
+          fill="#6b8db0" 
+          stroke="#5a7c99" 
+          stroke-width="0.5"/>
+    
+    <!-- Eye with highlight -->
+    <g id="eye">
+      <circle cx="67" cy="17.5" r="2" fill="#4a6b85" opacity="0.3"/>
+      <circle cx="67.5" cy="17" r="1.5" fill="white"/>
+      <circle cx="68" cy="17" r="0.7" fill="#1a2a3a"/>
+      <circle cx="68.3" cy="16.7" r="0.3" fill="white" opacity="0.8"/>
+    </g>
+    
+    <!-- Mouth line with smile -->
+    <path d="M 77.5,21.5 Q 73,22.5 70,21" 
+          stroke="#4a6b85" 
+          stroke-width="0.6" 
+          fill="none" 
+          stroke-linecap="round"/>
+    
+    <!-- Subtle body contour lines -->
+    <path d="M 55,19 Q 60,18.5 65,19" 
+          stroke="#8fabc7" 
+          stroke-width="0.4" 
+          fill="none" 
+          opacity="0.6"/>
+    
+    <!-- Subtle undulation animation on whole body -->
+    <animateTransform
+      attributeName="transform"
+      attributeType="XML"
+      type="translate"
+      values="0,0; 0,-0.5; 0,0; 0,0.5; 0,0"
+      dur="1.6s"
+      repeatCount="indefinite"/>
+  </g>
+</svg>

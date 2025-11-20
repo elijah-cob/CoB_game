@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bunbury Dolphin Dash</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-layer">
+            <div id="start-screen" class="screen active">
+                <h1>Bunbury Dolphin Dash</h1>
+                <p>Swim through Koombana Bay!</p>
+                <p>Click or Space to Swim</p>
+                <button id="start-btn">Start Game</button>
+            </div>
+            <div id="game-over-screen" class="screen hidden">
+                <h1>Game Over</h1>
+                <p>Score: <span id="final-score">0</span></p>
+                <button id="restart-btn">Play Again</button>
+            </div>
+            <div id="score-display" class="hidden">Score: <span id="score">0</span></div>
+            <div id="high-score-display" class="hidden">High Score: <span id="high-score">0</span></div>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+
+</html>
