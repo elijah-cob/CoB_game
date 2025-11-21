@@ -18,6 +18,7 @@ let isGameOver = false;
 let isPlaying = false;
 let isPaused = false;
 let debugMode = false;
+let autoplay = false;
 let animationId;
 
 // Assets
@@ -298,6 +299,10 @@ function handleInput(e) {
         debugMode = !debugMode;
         return;
     }
+    if (e.code === 'KeyA' && e.type === 'keydown') {
+        autoplay = !autoplay;
+        return;
+    }
     if (e.code === 'KeyP' || e.code === 'Escape') {
         togglePause();
         return;
@@ -403,8 +408,85 @@ function checkSpawnCollision(token) {
     return false;
 }
 
+function updateAutoplay() {
+    if (!autoplay || !isPlaying || isPaused || isGameOver) return;
+
+    const dolphinBox = dolphin.getHitbox();
+    
+    // 1. Scan: Find nearest relevant entities
+    const upcomingObstacles = obstacles
+        .filter(obs => obs.x + obs.width > dolphin.x)
+        .sort((a, b) => a.x - b.x);
+    
+    const upcomingTokens = tokens
+        .filter(tok => tok.x + tok.size > dolphin.x)
+        .sort((a, b) => a.x - b.x);
+
+    let targetY = canvas.height / 2; // Default safe spot
+    const nearestObstacle = upcomingObstacles[0];
+    const nearestToken = upcomingTokens[0];
+
+    // 2. Prioritize
+    if (nearestObstacle) {
+        const obsBox = nearestObstacle.getHitbox();
+        const distToObs = obsBox.x - (dolphin.x + dolphin.width);
+
+        // If obstacle is relatively close (within 400px)
+        if (distToObs < 400) {
+            const gapAbove = obsBox.y;
+            const gapBelow = canvas.height - (obsBox.y + obsBox.height);
+
+            // Determine safest path (Go Over vs. Go Under)
+            // Prefer larger gap, but bias slightly towards staying away from edges
+            if (gapAbove > gapBelow) {
+                targetY = gapAbove / 2;
+            } else {
+                targetY = obsBox.y + obsBox.height + gapBelow / 2;
+            }
+
+            // Adjust for Token if safe
+            if (nearestToken && nearestToken.x < nearestObstacle.x + nearestObstacle.width + 100) {
+                 // Token is near this obstacle
+                 // Only target if on the same side as our safe path
+                 if (gapAbove > gapBelow) {
+                     if (nearestToken.y < obsBox.y) targetY = nearestToken.y;
+                 } else {
+                     if (nearestToken.y > obsBox.y + obsBox.height) targetY = nearestToken.y;
+                 }
+            }
+        } else {
+            // Obstacle far away, prioritize token
+            if (nearestToken) targetY = nearestToken.y;
+        }
+    } else if (nearestToken) {
+        targetY = nearestToken.y;
+    }
+
+    // 3. Act
+    // If we are below target (y > targetY) and need to go up
+    // Add tolerance to prevent jitter
+    if (dolphin.y > targetY + 10) {
+        // Only jump if we aren't already moving up fast enough
+        if (dolphin.velocity >= -3) { 
+             dolphin.jump();
+        }
+    }
+}
+
+function drawAutoplayStatus() {
+    if (!autoplay) return;
+    ctx.save();
+    ctx.fillStyle = 'lime';
+    ctx.font = '20px Outfit, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('AUTOPLAY ON', 20, 40);
+    ctx.restore();
+}
+
 function animate() {
     if (!isPlaying || isPaused) return;
+
+    updateAutoplay();
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -467,6 +549,7 @@ function animate() {
     });
 
     checkCollisions();
+    drawAutoplayStatus();
 
     frameCount++;
     gameSpeed += 0.001; // Slowly increase speed
