@@ -11,8 +11,15 @@ const FART_KEY_CODE = 'KeyF'; // Activation key for the fart buff
 const FART_FORWARD_DISTANCE = 120; // Maximum horizontal distance gained during the buff (px)
 const FART_FORWARD_SPEED = Math.abs(JUMP_FORCE); // Horizontal travel speed, matching jump impulse magnitude
 const FART_RETURN_SLOWDOWN = 3; // Divider that makes the horizontal return 3x slower than downward sink speed
-const FART_PARTICLE_COLOR = 'rgba(160, 160, 160, 0.9)'; // Smoke tint for the fart plume
-const FART_PARTICLE_COUNT = 12; // Number of particles emitted per fart activation
+const FART_PARTICLE_COLOR = 'rgba(160, 160, 160, 0.6)'; // Tint for small smoke sparkles
+const FART_PARTICLE_COUNT = 10; // Number of sparkle particles emitted per fart activation
+const FART_TRAIL_WIDTH = 36; // Base width of the cone-shaped fart trail
+const FART_TRAIL_LENGTH = 70; // Base length of the cone-shaped fart trail
+const FART_TRAIL_TAPER = 0.45; // Rate at which the cone narrows per frame
+const FART_TRAIL_STRETCH = 1.1; // Rate at which the cone lengthens per frame
+const FART_TRAIL_FADE = 0.03; // Fade rate per frame for the fart cone
+const FART_TRAIL_COLOR_INNER = 'rgba(255, 247, 160, 0.95)'; // Bright core color for the shooting-star look
+const FART_TRAIL_COLOR_OUTER = 'rgba(255, 170, 51, 0.55)'; // Edge glow color for the cone trail
 
 // Game State
 let gameSpeed = GAME_SPEED_INITIAL;
@@ -157,6 +164,53 @@ class Particle {
     }
 }
 
+class FartTrailParticle {
+    /**
+     * Creates a cone-shaped shooting-star plume for the fart buff.
+     * @param {number} x - Starting X position anchored to the dolphin's body.
+     * @param {number} y - Starting Y position anchored to the dolphin's body.
+     */
+    constructor(x, y) {
+        this.x = x; // Current X coordinate for the cone
+        this.y = y; // Current Y coordinate for the cone
+        this.length = FART_TRAIL_LENGTH; // Current cone length
+        this.width = FART_TRAIL_WIDTH; // Current cone width
+        this.life = 1.0; // Alpha fade control
+        this.verticalDrift = Math.random() * 1.2 - 0.6; // Slight wobble to keep it cartoony
+    }
+
+    update() {
+        this.x -= (gameSpeed + 2); // Trail lags slightly behind the dolphin
+        this.y += this.verticalDrift;
+        this.length += FART_TRAIL_STRETCH;
+        this.width = Math.max(8, this.width - FART_TRAIL_TAPER);
+        this.life -= FART_TRAIL_FADE;
+    }
+
+    draw() {
+        if (this.life <= 0) return;
+        ctx.save();
+        ctx.globalAlpha = Math.max(this.life, 0);
+        ctx.translate(this.x, this.y);
+
+        const gradient = ctx.createLinearGradient(0, 0, -this.length, 0);
+        gradient.addColorStop(0, FART_TRAIL_COLOR_INNER);
+        gradient.addColorStop(0.7, FART_TRAIL_COLOR_OUTER);
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.moveTo(0, -this.width / 2);
+        ctx.quadraticCurveTo(-this.length * 0.5, -this.width, -this.length, 0);
+        ctx.quadraticCurveTo(-this.length * 0.5, this.width, 0, this.width / 2);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.restore();
+        ctx.globalAlpha = 1;
+    }
+}
+
 class Dolphin {
     constructor() {
         this.width = 80; // Dolphin sprite width
@@ -277,12 +331,22 @@ class Dolphin {
     emitFartParticles() {
         const spawnX = this.x; // Emit from current X so plume trails behind after movement starts
         const spawnY = this.y + this.height / 2; // Emit midway down the body
+
+        // Main shooting-star cone
+        particles.push(new FartTrailParticle(spawnX, spawnY));
+
+        // Sparkles that give the plume a magical trail
         for (let i = 0; i < FART_PARTICLE_COUNT; i++) {
             const velocityOverride = {
-                speedX: (Math.random() * -2) - 0.5,
-                speedY: Math.random() * 2 - 1
+                speedX: (Math.random() * -2.5) - 0.5,
+                speedY: Math.random() * 1.5 - 0.75
             };
-            particles.push(new Particle(spawnX, spawnY, FART_PARTICLE_COLOR, velocityOverride));
+            particles.push(new Particle(
+                spawnX + Math.random() * 8,
+                spawnY + (Math.random() * 12 - 6),
+                FART_PARTICLE_COLOR,
+                velocityOverride
+            ));
         }
     }
 }
