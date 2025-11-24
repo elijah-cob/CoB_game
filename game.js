@@ -17,11 +17,14 @@ const FART_PARTICLE_COUNT = 12; // Number of particles emitted per fart activati
 // Game State
 let gameSpeed = GAME_SPEED_INITIAL;
 let score = 0;
+let multiplier = 1;
 let highScore = localStorage.getItem('dolphinDashHighScore') || 0;
 let frameCount = 0;
 let isGameOver = false;
 let isPlaying = false;
 let isPaused = false;
+let debugMode = false;
+let autoplay = false;
 let animationId;
 
 // Assets
@@ -63,6 +66,8 @@ const gameOverScreen = document.getElementById('game-over-screen');
 const scoreDisplay = document.getElementById('score-display');
 const scoreSpan = document.getElementById('score');
 const finalScoreSpan = document.getElementById('final-score');
+const multiplierDisplay = document.getElementById('multiplier-display');
+const multiplierSpan = document.getElementById('multiplier');
 const highScoreDisplay = document.getElementById('high-score-display');
 const highScoreSpan = document.getElementById('high-score');
 // Resize Canvas
@@ -187,6 +192,21 @@ class Dolphin {
 
     draw() {
         ctx.drawImage(dolphinImg, this.x, this.y, this.width, this.height);
+        if (debugMode) {
+            const hb = this.getHitbox();
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(hb.x, hb.y, hb.width, hb.height);
+        }
+    }
+
+    getHitbox() {
+        return {
+            x: this.x + 10,
+            y: this.y + 10,
+            width: this.width - 20,
+            height: this.height - 20
+        };
     }
 
     jump() {
@@ -284,6 +304,24 @@ class Obstacle {
 
     draw() {
         ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+        if (debugMode) {
+            const hb = this.getHitbox();
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(hb.x, hb.y, hb.width, hb.height);
+        }
+    }
+
+    getHitbox() {
+        // Shrink significantly: 70% width, 50% height, offset to bottom-center
+        const hbWidth = this.width * 0.7;
+        const hbHeight = this.height * 0.5;
+        return {
+            x: this.x + (this.width - hbWidth) / 2,
+            y: this.y + (this.height - hbHeight), // Align to bottom
+            width: hbWidth,
+            height: hbHeight
+        };
     }
 }
 
@@ -306,6 +344,22 @@ class Token {
 
     draw() {
         ctx.drawImage(tokenImg, this.x, this.y, this.size, this.size);
+        if (debugMode) {
+            const hb = this.getHitbox();
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(hb.x, hb.y, hb.width, hb.height);
+        }
+    }
+
+    getHitbox() {
+        const padding = 5;
+        return {
+            x: this.x + padding,
+            y: this.y + padding,
+            width: this.size - padding * 2,
+            height: this.size - padding * 2
+        };
     }
 }
 
@@ -317,11 +371,13 @@ function init() {
     background = new Background();
     soundController = new SoundController();
     score = 0;
+    multiplier = 1;
     gameSpeed = GAME_SPEED_INITIAL;
     frameCount = 0;
     isGameOver = false;
     isPaused = false;
     scoreSpan.innerText = score;
+    multiplierSpan.innerText = multiplier;
     highScoreSpan.innerText = highScore;
 }
 
@@ -330,6 +386,14 @@ function init() {
  * @param {KeyboardEvent | MouseEvent} e - Incoming input event.
  */
 function handleInput(e) {
+    if (e.code === 'KeyD' && e.type === 'keydown') {
+        debugMode = !debugMode;
+        return;
+    }
+    if (e.code === 'KeyA' && e.type === 'keydown') {
+        autoplay = !autoplay;
+        return;
+    }
     if (e.code === 'KeyP' || e.code === 'Escape') {
         togglePause();
         return;
@@ -359,19 +423,17 @@ function togglePause() {
 }
 
 function checkCollisions() {
+    const dolphinBox = dolphin.getHitbox();
+
     // Obstacles (Simple AABB)
     obstacles.forEach(obstacle => {
-        // Shrink hitbox slightly for better feel
-        const hitX = dolphin.x + 10;
-        const hitY = dolphin.y + 10;
-        const hitW = dolphin.width - 20;
-        const hitH = dolphin.height - 20;
+        const obsBox = obstacle.getHitbox();
 
         if (
-            hitX < obstacle.x + obstacle.width &&
-            hitX + hitW > obstacle.x &&
-            hitY < obstacle.y + obstacle.height &&
-            hitY + hitH > obstacle.y
+            dolphinBox.x < obsBox.x + obsBox.width &&
+            dolphinBox.x + dolphinBox.width > obsBox.x &&
+            dolphinBox.y < obsBox.y + obsBox.height &&
+            dolphinBox.y + dolphinBox.height > obsBox.y
         ) {
             gameOver();
         }
@@ -379,15 +441,19 @@ function checkCollisions() {
 
     // Tokens
     tokens.forEach((token, index) => {
+        const tokenBox = token.getHitbox();
+
         if (
-            dolphin.x < token.x + token.size &&
-            dolphin.x + dolphin.width > token.x &&
-            dolphin.y < token.y + token.size &&
-            dolphin.y + dolphin.height > token.y
+            dolphinBox.x < tokenBox.x + tokenBox.width &&
+            dolphinBox.x + dolphinBox.width > tokenBox.x &&
+            dolphinBox.y < tokenBox.y + tokenBox.height &&
+            dolphinBox.y + dolphinBox.height > tokenBox.y
         ) {
             tokens.splice(index, 1);
-            score += 10;
+            multiplier++;
+            score += 10 * multiplier;
             scoreSpan.innerText = score;
+            multiplierSpan.innerText = multiplier;
             soundController.collect();
             // Sparkles
             for (let i = 0; i < 8; i++) {
@@ -412,12 +478,109 @@ function gameOver() {
     gameOverScreen.classList.remove('hidden');
     gameOverScreen.classList.add('active');
     scoreDisplay.classList.add('hidden');
+    multiplierDisplay.classList.add('hidden');
     highScoreDisplay.classList.add('hidden');
     cancelAnimationFrame(animationId);
 }
 
+function checkSpawnCollision(token) {
+    const tokenBox = token.getHitbox();
+    const buffer = 20; // Buffer distance
+    
+    for (const obstacle of obstacles) {
+        const obsBox = obstacle.getHitbox();
+        
+        if (
+            tokenBox.x < obsBox.x + obsBox.width + buffer &&
+            tokenBox.x + tokenBox.width + buffer > obsBox.x &&
+            tokenBox.y < obsBox.y + obsBox.height + buffer &&
+            tokenBox.y + tokenBox.height + buffer > obsBox.y
+        ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function updateAutoplay() {
+    if (!autoplay || !isPlaying || isPaused || isGameOver) return;
+
+    const dolphinBox = dolphin.getHitbox();
+    
+    // 1. Scan: Find nearest relevant entities
+    const upcomingObstacles = obstacles
+        .filter(obs => obs.x + obs.width > dolphin.x)
+        .sort((a, b) => a.x - b.x);
+    
+    const upcomingTokens = tokens
+        .filter(tok => tok.x + tok.size > dolphin.x)
+        .sort((a, b) => a.x - b.x);
+
+    let targetY = canvas.height / 2; // Default safe spot
+    const nearestObstacle = upcomingObstacles[0];
+    const nearestToken = upcomingTokens[0];
+
+    // 2. Prioritize
+    if (nearestObstacle) {
+        const obsBox = nearestObstacle.getHitbox();
+        const distToObs = obsBox.x - (dolphin.x + dolphin.width);
+
+        // If obstacle is relatively close (within 400px)
+        if (distToObs < 400) {
+            const gapAbove = obsBox.y;
+            const gapBelow = canvas.height - (obsBox.y + obsBox.height);
+
+            // Determine safest path (Go Over vs. Go Under)
+            // Prefer larger gap, but bias slightly towards staying away from edges
+            if (gapAbove > gapBelow) {
+                targetY = gapAbove / 2;
+            } else {
+                targetY = obsBox.y + obsBox.height + gapBelow / 2;
+            }
+
+            // Adjust for Token if safe
+            if (nearestToken && nearestToken.x < nearestObstacle.x + nearestObstacle.width + 100) {
+                 // Token is near this obstacle
+                 // Only target if on the same side as our safe path
+                 if (gapAbove > gapBelow) {
+                     if (nearestToken.y < obsBox.y) targetY = nearestToken.y;
+                 } else {
+                     if (nearestToken.y > obsBox.y + obsBox.height) targetY = nearestToken.y;
+                 }
+            }
+        } else {
+            // Obstacle far away, prioritize token
+            if (nearestToken) targetY = nearestToken.y;
+        }
+    } else if (nearestToken) {
+        targetY = nearestToken.y;
+    }
+
+    // 3. Act
+    // If we are below target (y > targetY) and need to go up
+    // Add tolerance to prevent jitter
+    if (dolphin.y > targetY + 10) {
+        // Only jump if we aren't already moving up fast enough
+        if (dolphin.velocity >= -3) { 
+             dolphin.jump();
+        }
+    }
+}
+
+function drawAutoplayStatus() {
+    if (!autoplay) return;
+    ctx.save();
+    ctx.fillStyle = 'lime';
+    ctx.font = '20px Outfit, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('AUTOPLAY ON', 20, 40);
+    ctx.restore();
+}
+
 function animate() {
     if (!isPlaying || isPaused) return;
+
+    updateAutoplay();
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -445,12 +608,31 @@ function animate() {
 
     // Handle Tokens
     if (frameCount % SPAWN_RATE_TOKEN === 0) {
-        tokens.push(new Token());
+        let newToken = new Token();
+        let safe = false;
+        // Try up to 10 times to find a safe spawn location
+        for (let i = 0; i < 10; i++) {
+            if (!checkSpawnCollision(newToken)) {
+                safe = true;
+                break;
+            }
+            newToken.y = Math.random() * (canvas.height - newToken.size * 2) + newToken.size;
+        }
+        if (safe) {
+            tokens.push(newToken);
+        }
     }
     tokens.forEach((token, index) => {
         token.update();
         token.draw();
-        if (token.markedForDeletion) tokens.splice(index, 1);
+        if (token.markedForDeletion) {
+            tokens.splice(index, 1);
+            // Reset multiplier if token is missed
+            if (token.x + token.size < 0) {
+                multiplier = 1;
+                multiplierSpan.innerText = multiplier;
+            }
+        }
     });
 
     // Handle Particles
@@ -461,6 +643,7 @@ function animate() {
     });
 
     checkCollisions();
+    drawAutoplayStatus();
 
     frameCount++;
     gameSpeed += 0.001; // Slowly increase speed
@@ -476,6 +659,7 @@ function startGame() {
     gameOverScreen.classList.remove('active');
     gameOverScreen.classList.add('hidden');
     scoreDisplay.classList.remove('hidden');
+    multiplierDisplay.classList.remove('hidden');
     highScoreDisplay.classList.remove('hidden');
     animate();
 }
