@@ -7,6 +7,12 @@ const JUMP_FORCE = -7;
 const GAME_SPEED_INITIAL = 4;
 const SPAWN_RATE_OBSTACLE = 150; // Frames
 const SPAWN_RATE_TOKEN = 100; // Frames
+const FART_KEY_CODE = 'KeyF'; // Activation key for the fart buff
+const FART_FORWARD_DISTANCE = 120; // Maximum horizontal distance gained during the buff (px)
+const FART_FORWARD_SPEED = Math.abs(JUMP_FORCE); // Horizontal travel speed, matching jump impulse magnitude
+const FART_RETURN_SLOWDOWN = 3; // Divider that makes the horizontal return 3x slower than downward sink speed
+const FART_PARTICLE_COLOR = 'rgba(160, 160, 160, 0.9)'; // Smoke tint for the fart plume
+const FART_PARTICLE_COUNT = 12; // Number of particles emitted per fart activation
 
 // Game State
 let gameSpeed = GAME_SPEED_INITIAL;
@@ -114,12 +120,18 @@ class Background {
 }
 
 class Particle {
-    constructor(x, y, color) {
+    /**
+     * @param {number} x - X position where the particle spawns.
+     * @param {number} y - Y position where the particle spawns.
+     * @param {string} color - Fill color for the particle.
+     * @param {{speedX?: number, speedY?: number}} [velocityOverride] - Optional custom velocity for directional effects.
+     */
+    constructor(x, y, color, velocityOverride = {}) {
         this.x = x;
         this.y = y;
         this.size = Math.random() * 5 + 2;
-        this.speedX = Math.random() * 2 - 1;
-        this.speedY = Math.random() * 2 - 1;
+        this.speedX = velocityOverride.speedX ?? (Math.random() * 2 - 1);
+        this.speedY = velocityOverride.speedY ?? (Math.random() * 2 - 1);
         this.color = color;
         this.life = 1.0;
     }
@@ -142,16 +154,23 @@ class Particle {
 
 class Dolphin {
     constructor() {
-        this.width = 80;
-        this.height = 40;
-        this.x = 100;
-        this.y = canvas.height / 2;
-        this.velocity = 0;
+        this.width = 80; // Dolphin sprite width
+        this.height = 40; // Dolphin sprite height
+        this.baseX = 100; // Default X position where the dolphin idles
+        this.x = this.baseX; // Current horizontal position
+        this.y = canvas.height / 2; // Current vertical position
+        this.velocity = 0; // Vertical velocity affected by gravity
+        this.fartState = 'ready'; // Tracks fart state: ready | forward | return
+        this.fartDistanceTravelled = 0; // Accumulates distance covered while boosting forward
     }
 
+    /**
+     * Updates both vertical physics and fart-specific horizontal movement.
+     */
     update() {
         this.velocity += GRAVITY;
         this.y += this.velocity;
+        this.updateHorizontalPosition();
 
         // Floor Collision
         if (this.y + this.height > canvas.height) {
@@ -176,6 +195,74 @@ class Dolphin {
         // Create bubbles
         for (let i = 0; i < 5; i++) {
             particles.push(new Particle(this.x + 20, this.y + 30, 'rgba(255, 255, 255, 0.8)'));
+        }
+    }
+
+    /**
+     * @returns {boolean} Whether the fart buff can be triggered.
+     */
+    canFart() {
+        return this.fartState === 'ready' && Math.abs(this.x - this.baseX) < 0.5;
+    }
+
+    /**
+     * Starts the fart buff by reusing the jump impulse, adding horizontal motion, and spawning smoke.
+     * @returns {boolean} Indicates if the fart buff activated successfully.
+     */
+    startFart() {
+        if (!this.canFart()) return false;
+        this.jump();
+        this.fartState = 'forward';
+        this.fartDistanceTravelled = 0;
+        this.emitFartParticles();
+        return true;
+    }
+
+    /**
+     * Moves the dolphin forward during the fart and eases it back 3x slower than the sink speed.
+     */
+    updateHorizontalPosition() {
+        if (this.fartState === 'forward') {
+            this.x += FART_FORWARD_SPEED;
+            this.fartDistanceTravelled += FART_FORWARD_SPEED;
+            const maxX = Math.min(this.baseX + FART_FORWARD_DISTANCE, canvas.width - this.width);
+            if (this.x >= maxX || this.fartDistanceTravelled >= FART_FORWARD_DISTANCE) {
+                this.x = maxX;
+                this.fartState = 'return';
+            }
+            return;
+        }
+
+        if (this.fartState === 'return') {
+            const downwardSpeed = Math.max(Math.abs(this.velocity), Math.abs(JUMP_FORCE));
+            const returnSpeed = Math.max(0.5, downwardSpeed / FART_RETURN_SLOWDOWN);
+            const distanceToBase = this.x - this.baseX;
+            if (Math.abs(distanceToBase) <= returnSpeed) {
+                this.x = this.baseX;
+                this.fartState = 'ready';
+                this.fartDistanceTravelled = 0;
+            } else {
+                this.x -= Math.sign(distanceToBase) * returnSpeed;
+            }
+            return;
+        }
+
+        // Ensure the dolphin stays aligned with its origin when idle.
+        this.x = this.baseX;
+    }
+
+    /**
+     * Emits a jet-like smoke trail from the dolphin's rear when the fart buff starts.
+     */
+    emitFartParticles() {
+        const spawnX = this.x; // Emit from current X so plume trails behind after movement starts
+        const spawnY = this.y + this.height / 2; // Emit midway down the body
+        for (let i = 0; i < FART_PARTICLE_COUNT; i++) {
+            const velocityOverride = {
+                speedX: (Math.random() * -2) - 0.5,
+                speedY: Math.random() * 2 - 1
+            };
+            particles.push(new Particle(spawnX, spawnY, FART_PARTICLE_COLOR, velocityOverride));
         }
     }
 }
@@ -238,12 +325,19 @@ function init() {
     highScoreSpan.innerText = highScore;
 }
 
+/**
+ * Handles keyboard and click input for movement, pause, and the fart buff.
+ * @param {KeyboardEvent | MouseEvent} e - Incoming input event.
+ */
 function handleInput(e) {
     if (e.code === 'KeyP' || e.code === 'Escape') {
         togglePause();
         return;
     }
-    if ((e.code === 'Space' || e.type === 'click') && isPlaying && !isPaused) {
+    if (e.code === FART_KEY_CODE && isPlaying && !isPaused && dolphin && dolphin.startFart()) {
+        return;
+    }
+    if ((e.code === 'Space' || e.type === 'click') && isPlaying && !isPaused && dolphin) {
         dolphin.jump();
     }
 }
